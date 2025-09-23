@@ -1,4 +1,5 @@
 # Mapping JSON spec
+```
 {
     "{{result-field-name}}": {
         "src::{{source-name}}": "{{path-in-source}}"
@@ -11,6 +12,7 @@
         }
     },
 }
+```
 
 ## Keys in spec
 * `src::` prefix to indicate if key is source
