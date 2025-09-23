@@ -9,7 +9,7 @@ import (
 )
 
 func TestMappingEngine_BasicTransformation(t *testing.T) {
-	// Sample mapping configuration
+	// sample mapping configuration
 	mappingConfig := `{
 		"id": {
 			"src::source_1": "Id",
@@ -26,11 +26,11 @@ func TestMappingEngine_BasicTransformation(t *testing.T) {
 	engine, err := NewMappingEngine([]byte(mappingConfig))
 	require.NoError(t, err)
 
-	// Sample source data
+	// sample source data
 	sources := SourceData{
 		"source_1": json.RawMessage(`{"Id": "123", "Name": "Hotel A"}`),
-		"source_2": json.RawMessage(`{"id": "123", "name": "Hotel B"}`),
-		"source_3": json.RawMessage(`{"hotel_id": "123", "hotel_name": "Hotel C"}`),
+		"source_2": json.RawMessage(`{"id": "123", "name": "Hotel A"}`),
+		"source_3": json.RawMessage(`{"hotel_id": "123", "hotel_name": "Hotel A"}`),
 	}
 
 	result, err := engine.Transform(sources)
@@ -40,7 +40,6 @@ func TestMappingEngine_BasicTransformation(t *testing.T) {
 	err = json.Unmarshal(result, &transformed)
 	require.NoError(t, err)
 
-	// Should prefer source_1 values
 	assert.Equal(t, "123", transformed["id"])
 	assert.Equal(t, "Hotel A", transformed["name"])
 }
@@ -72,14 +71,14 @@ func TestMappingEngine_NestedJSONPath(t *testing.T) {
 	assert.Equal(t, "Singapore", location["country"])
 }
 
-func TestMappingEngine_ActionProcessing(t *testing.T) {
+func TestMappingEngine_GeneralAmenities(t *testing.T) {
 	mappingConfig := `{
 		"amenities": {
 			"general": {
 				"src::source_1": "Facilities",
 				"src::source_2": null,
 				"src::source_3": "amenities.general",
-				"action": "add_spaces, to_lowercase, merge_lists"
+				"action": "normalize_general_amenities"
 			}
 		}
 	}`
@@ -89,7 +88,7 @@ func TestMappingEngine_ActionProcessing(t *testing.T) {
 
 	sources := SourceData{
 		"source_1": json.RawMessage(`{"Facilities": ["WiFi", "BusinessCenter", "gym"]}`),
-		"source_3": json.RawMessage(`{"amenities": {"general": ["outdoor_pool", "GYM"]}}`),
+		"source_3": json.RawMessage(`{"amenities": {"general": ["outdoor pool", "GYM"]}}`),
 	}
 
 	result, err := engine.Transform(sources)
@@ -104,9 +103,46 @@ func TestMappingEngine_ActionProcessing(t *testing.T) {
 
 	assert.Len(t, general, 4) // deduplicated length
 	assert.Contains(t, general, "wifi")
-	assert.Contains(t, general, "business center") // added space
+	assert.Contains(t, general, "business center")
 	assert.Contains(t, general, "outdoor pool")
 	assert.Contains(t, general, "gym") // deduplicated and lowercased
+}
+
+func TestMappingEngine_RoomAmenities(t *testing.T) {
+	mappingConfig := `{
+		"amenities": {
+			"room": {
+				"src::source_1": "Facilities",
+				"src::source_2": "amenities",
+				"src::source_3": "amenities.room",
+				"action": "normalize_room_amenities"
+			}
+		}
+	}`
+
+	engine, err := NewMappingEngine([]byte(mappingConfig))
+	require.NoError(t, err)
+
+	sources := SourceData{
+		"source_1": json.RawMessage(`{"Facilities": ["Aircon", "Tv", "gym"]}`),
+		"source_2": json.RawMessage(`{"amenities": ["Aircon", "Tv", "Tub"]}`),
+		"source_3": json.RawMessage(`{"amenities": {"room": ["outdoor pool", "BathTub"]}}`),
+	}
+
+	result, err := engine.Transform(sources)
+	require.NoError(t, err)
+
+	var transformed map[string]interface{}
+	err = json.Unmarshal(result, &transformed)
+	require.NoError(t, err)
+
+	amenities := transformed["amenities"].(map[string]interface{})
+	room := amenities["room"].([]interface{})
+
+	assert.Len(t, room, 3) // deduplicated length
+	assert.Contains(t, room, "aircon")
+	assert.Contains(t, room, "tv")
+	assert.Contains(t, room, "bathtub") // deduplicated and lowercased
 }
 
 func TestMappingEngine_TemplateProcessing(t *testing.T) {

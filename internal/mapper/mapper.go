@@ -35,11 +35,7 @@ func NewMappingEngine(mappingJSON []byte) (*MappingEngine, error) {
 
 	engine := &MappingEngine{
 		config: config,
-		// processors: make(map[string]ActionProcessor),
 	}
-
-	// // Register built-in processors
-	// engine.registerDefaultProcessors()
 
 	return engine, nil
 }
@@ -106,16 +102,12 @@ func (me *MappingEngine) isLeafMapping(mapping map[string]interface{}) bool {
 func (me *MappingEngine) processLeafMapping(mapping map[string]interface{}, sources SourceData) (interface{}, error) {
 	fieldMapping := me.parseFieldMapping(mapping)
 
-	// Extract values from all sources
+	// extract values from all sources
 	values := me.extractValuesFromSources(fieldMapping.SourcePaths, sources)
 
-	// Apply actions if specified
+	// apply actions if specified
 	if len(fieldMapping.Actions) > 0 {
 		return me.applyActions(values, fieldMapping.Actions)
-		// if err != nil {
-		// 	return nil, err
-		// }
-		// values = withActions
 	}
 
 	return me.selectBestValue(values), nil
@@ -141,7 +133,6 @@ func (me *MappingEngine) parseFieldMapping(mapping map[string]interface{}) Field
 	return fieldMapping
 }
 
-// TODO: improve performance by caching parsed JSONPaths or templates
 // extractValuesFromSources extracts values from all sources using JSONPath or templates
 func (me *MappingEngine) extractValuesFromSources(sourcePaths map[string]interface{}, sources SourceData) map[string]interface{} {
 	values := make(map[string]interface{})
@@ -170,18 +161,17 @@ func (me *MappingEngine) extractValue(sourceData json.RawMessage, pathOrTemplate
 		return nil
 	}
 
-	// Handle template strings (e.g., "{{Address}}, {{PostalCode}}")
+	// handle template strings (e.g., "{{Address}}, {{PostalCode}}")
 	if me.isTemplate(pathStr) {
 		return me.processTemplate(sourceData, pathStr)
 	}
 
-	// Handle regular JSONPath
+	// handle regular JSONPath
 	result := gjson.Get(string(sourceData), pathStr)
 	if !result.Exists() {
 		return nil
 	}
 
-	// Return appropriate Go type
 	switch result.Type {
 	case gjson.String:
 		return result.String()
@@ -215,7 +205,7 @@ func (me *MappingEngine) isTemplate(str string) bool {
 
 // processTemplate processes template strings like "{{Address}}, {{PostalCode}}"
 func (me *MappingEngine) processTemplate(sourceData json.RawMessage, template string) interface{} {
-	// Find all template variables
+	// find all template variables
 	re := regexp.MustCompile(`\{\{([^}]+)\}\}`)
 	matches := re.FindAllStringSubmatch(template, -1)
 
@@ -225,7 +215,7 @@ func (me *MappingEngine) processTemplate(sourceData json.RawMessage, template st
 			fieldName := match[1]
 			placeholder := match[0]
 
-			// Extract value for this field
+			// extract value for this field
 			value := gjson.Get(string(sourceData), fieldName)
 			if value.Exists() {
 				result = strings.ReplaceAll(result, placeholder, value.String())
@@ -235,7 +225,7 @@ func (me *MappingEngine) processTemplate(sourceData json.RawMessage, template st
 		}
 	}
 
-	// Clean up extra commas and spaces
+	// clean up extra commas and spaces
 	result = strings.TrimSpace(result)
 	result = regexp.MustCompile(`\s*,\s*,\s*`).ReplaceAllString(result, ", ")
 	result = regexp.MustCompile(`^,\s*|,\s*$`).ReplaceAllString(result, "")
@@ -253,8 +243,6 @@ func (m *MappingEngine) selectBestValue(values map[string]interface{}) interface
 		if str, ok := value.(string); ok && strings.TrimSpace(str) != "" {
 			return m.selectStringBestValue(values)
 		}
-		// default behavior if array: merge
-
 		if arr, ok := value.([]interface{}); ok && len(arr) > 0 {
 			fmt.Println("Evaluating array value:", value)
 			return m.mergeLists(values)
@@ -283,22 +271,98 @@ func (me *MappingEngine) selectStringBestValue(values map[string]interface{}) in
 // applyActions applies processing actions to values
 func (me *MappingEngine) applyActions(values map[string]interface{}, actions []string) (interface{}, error) {
 
-	result := me.selectBestValue(values)
-
+	var result interface{}
 	// apply each action in sequence
 	for _, action := range actions {
 		action = strings.TrimSpace(action)
 		switch action {
-		case "add_spaces":
-			result = me.addSpaces(result)
+		case "normalize_general_amenities":
+			fmt.Println("Normalizing general amenities with values:", values)
+			result = me.normalizeGeneralAmenities(values)
+		case "normalize_room_amenities":
+			fmt.Println("Normalizing room amenities with values:", values)
+			result = me.normalizeRoomAmenities(values)
 		case "to_lowercase":
 			result = me.toLowerCase(result)
 		}
 	}
 
-	// result = me.selectBestValue(values)
-
 	return result, nil
+}
+
+// normalizeAmenities normalizes amenities by mapping known variants to standard names
+func (m *MappingEngine) normalizeGeneralAmenities(values map[string]interface{}) interface{} {
+
+	// list of all known general amenities
+	// if value from source is not in list, discard value
+	// NOTE: should be a global constant or config
+	generalAmenity := map[string]string{
+		"businesscenter":  "business center",
+		"business center": "business center",
+		"gym":             "gym",
+		"outdoor pool":    "outdoor pool",
+		"indoor pool":     "indoor pool",
+		"pool":            "outdoor pool", // NOTE: assuming pool means outdoor pool
+		"airport shuttle": "airport shuttle",
+		"childcare":       "childcare",
+		"wifi":            "wifi",
+		"drycleaning":     "dry cleaning",
+		"dry cleaning":    "dry cleaning",
+		"breakfast":       "breakfast",
+		"bar":             "bar",       // NOTE: not in sample result.json but included for completeness, also assumed it's a general amenetity
+		"parking":         "parking",   // NOTE: not in sample result.json but included for completeness, also assumed it's a general amenetity
+		"concierge":       "concierge", // NOTE: not in sample result.json but included for completeness, also assumed it's a general amenetity
+	}
+
+	return m.normalizeAmenities(values, generalAmenity)
+}
+
+// normalizeRoomAmenities normalizes amenities by mapping known variants to standard names
+func (m *MappingEngine) normalizeRoomAmenities(values map[string]interface{}) interface{} {
+	// list of all known room amenities
+	// if value from source is not in list, discard value
+	// NOTE: should be a global constant or config
+	roomAmenity := map[string]string{
+		"aircon":         "aircon",
+		"tv":             "tv",
+		"coffee machine": "coffee machine",
+		"kettle":         "kettle",
+		"hair dryer":     "hair dryer",
+		"iron":           "iron",
+		"bathtub":        "bathtub",
+		"tub":            "bathtub",
+		"minibar":        "minibar", // NOTE: not in sample result.json but included for completeness, kept in room amenity as in sample_3.json
+	}
+
+	return m.normalizeAmenities(values, roomAmenity)
+}
+
+// normalizeAmenities normalizes amenities by mapping known variants to standard names
+func (m *MappingEngine) normalizeAmenities(values map[string]interface{}, amenityMap map[string]string) interface{} {
+	seenValue := make(map[string]bool)
+
+	for _, value := range values {
+		if arr, ok := value.([]interface{}); ok && len(arr) > 0 {
+			merged := m.mergeLists(values)
+			lowered := m.toLowerCase(merged)
+
+			for _, v := range lowered.([]interface{}) {
+				if str, ok := v.(string); ok {
+					if norm, exists := amenityMap[str]; exists {
+						seenValue[norm] = true
+					} else {
+						// NOTE: discard value if not in map of amenities
+					}
+				}
+			}
+		}
+	}
+	deduplicated := []string{}
+	for k := range seenValue {
+		deduplicated = append(deduplicated, k)
+	}
+
+	return deduplicated
 }
 
 // setNestedValue sets a value at a nested path in the result map
@@ -314,7 +378,7 @@ func (me *MappingEngine) setNestedValue(result map[string]interface{}, path stri
 	parts := strings.Split(path, ".")
 	current := result
 
-	// Navigate to the parent of the target
+	// navigate to the parent of the target
 	for _, part := range parts[:len(parts)-1] {
 		if _, exists := current[part]; !exists {
 			current[part] = make(map[string]interface{})
@@ -322,7 +386,7 @@ func (me *MappingEngine) setNestedValue(result map[string]interface{}, path stri
 		if next, ok := current[part].(map[string]interface{}); ok {
 			current = next
 		} else {
-			// Path conflict, can't proceed
+			// path conflict, can't proceed
 			return
 		}
 	}
@@ -342,7 +406,6 @@ func (me *MappingEngine) mergeLists(values map[string]interface{}) interface{} {
 
 	var merged []interface{}
 	seenItems := make(map[string]bool)
-	fmt.Println("Merging lists from values:", allValues)
 
 	for _, value := range allValues {
 		if arr, ok := value.([]interface{}); ok {
@@ -362,7 +425,6 @@ func (me *MappingEngine) mergeLists(values map[string]interface{}) interface{} {
 		}
 	}
 
-	fmt.Println("Merged list:", merged)
 	return merged
 }
 
@@ -380,32 +442,3 @@ func (me *MappingEngine) toLowerCase(value interface{}) interface{} {
 		return value
 	}
 }
-
-func (me *MappingEngine) addSpaces(value interface{}) interface{} {
-	switch v := value.(type) {
-	case string:
-		result := regexp.MustCompile(`([a-z])([A-Z])`).ReplaceAllString(v, "$1 $2")
-		result = strings.ReplaceAll(result, "_", " ")
-		result = regexp.MustCompile(`\s+`).ReplaceAllString(result, " ")
-		return strings.TrimSpace(result)
-	case []interface{}:
-		var result []interface{}
-		for _, item := range v {
-			result = append(result, me.addSpaces(item))
-		}
-		return result
-	default:
-		return value
-	}
-}
-
-// // registerDefaultProcessors registers built-in processors
-// func (me *MappingEngine) registerDefaultProcessors() {
-// 	// Custom processors can be registered here
-// 	// me.processors["custom_action"] = &CustomActionProcessor{}
-// }
-
-// // RegisterProcessor allows registering custom action processors
-// func (me *MappingEngine) RegisterProcessor(name string, processor ActionProcessor) {
-// 	me.processors[name] = processor
-// }

@@ -49,15 +49,15 @@
     "amenities": {
         "general": {
             "src::source_1": "Facilities",
-            "src::source_2": null,
+            "src::source_2": "amenities",
             "src::source_3": "amenities.general",
-            "action": "add_spaces, to_lowercase, merge_lists"
+            "action": "normalize_general_amenities"
         },
         "room": {
-            "src::source_1": null,
+            "src::source_1": "Facilities",
             "src::source_2": "amenities",
             "src::source_3": "amenities.room",
-            "action": "add_spaces, to_lowercase, merge_lists"
+            "action": "normalize_room_amenities"
         }
     },
     "images": {
