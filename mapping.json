@@ -1,0 +1,108 @@
+{
+    "id": {
+        "src::source_1": "Id",
+        "src::source_2": "id",
+        "src::source_3": "hotel_id"
+    },
+    "destination_id": {
+        "src::source_1": "DestinationId",
+        "src::source_2": "destination",
+        "src::source_3": "destination_id"
+    },
+    "name": {
+        "src::source_1": "Name",
+        "src::source_2": "name",
+        "src::source_3": "hotel_name"
+    },
+    "location": {
+        "lat": {
+            "src::source_1": "Latitude",
+            "src::source_2": "lat",
+            "src::source_3": null
+        },
+        "lng": {
+            "src::source_1": "Longitude",
+            "src::source_2": "lng",
+            "src::source_3": null
+        },
+        "address": {
+            "src::source_1": "{{Address}}, {{PostalCode}}",
+            "src::source_2": "address",
+            "src::source_3": "location.address"
+        },
+        "city": {
+            "src::source_1": "City",
+            "src::source_2": null,
+            "src::source_3": null
+        },
+        "country": {
+            "src::source_1": "Country",
+            "src::source_2": null,
+            "src::source_3": "country"
+        }
+    },
+    "description": {
+        "src::source_1": "Description",
+        "src::source_2": "info",
+        "src::source_3": "Description"
+    },
+    "amenities": {
+        "general": {
+            "src::source_1": "Facilities",
+            "src::source_2": null,
+            "src::source_3": "amenities.general",
+            "action": "add_spaces, to_lowercase, merge_lists"
+        },
+        "room": {
+            "src::source_1": null,
+            "src::source_2": "amenities",
+            "src::source_3": "amenities.room",
+            "action": "add_spaces, to_lowercase, merge_lists"
+        }
+    },
+    "images": {
+        "rooms": {
+            "link": {
+                "src::source_1": null,
+                "src::source_2": "url",
+                "src::source_3": "link"
+            },
+            "description": {
+                "src::source_1": null,
+                "src::source_2": "description",
+                "src::source_3": "caption"
+            }
+        },
+        "site": {
+            "link": {
+                "src::source_1": null,
+                "src::source_2": null,
+                "src::source_3": "link"
+            },
+            "description": {
+                "src::source_1": null,
+                "src::source_2": null,
+                "src::source_3": "caption"
+            },
+            "action": "merge_lists"
+        },
+        "amenities": {
+            "link": {
+                "src::source_1": null,
+                "src::source_2": "url",
+                "src::source_3": "link"
+            },
+            "description": {
+                "src::source_1": null,
+                "src::source_2": "description",
+                "src::source_3": "caption"
+            },
+            "action": "merge_lists"
+        }
+    },
+    "booking_conditions": {
+        "src::source_1": null,
+        "src::source_2": null,
+        "src::source_3": "booking_conditions"
+    }
+}
