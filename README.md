@@ -34,6 +34,10 @@ if values between source are all equal: copy as-is to destination field.
 // TODO: make default on list after all actions are applied
 no action - all equal
 
+`merge_image_arrays`: `merge_object_arrays` with `link` as unique identifier
+// TODO: make identifier configurable and accept multiple identifiers as well
+
+
 * order matters: `merge_lists, add_spaces, to_lowercase`, first action is applied first
 
 TODO: With regards to ameneties, there is a special, hardcoded mapping (WiFi & Business Center)
