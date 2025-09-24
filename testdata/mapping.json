@@ -38,10 +38,7 @@
         "country": {
             "src::source_1": "Country",
             "src::source_2": null,
-            "src::source_3": "location.country",
-            "actions": [
-                "normalize_country"
-            ]
+            "src::source_3": "location.country"
         }
     },
     "description": {
@@ -76,7 +73,7 @@
             "src::source_2": "images.rooms",
             "src::source_3": "images.rooms",
             "actions": [
-                "merge_object_arrays"
+                "merge_image_arrays"
             ],
             "field_mapping": {
                 "link": [
@@ -94,7 +91,7 @@
             "src::source_2": null,
             "src::source_3": "images.site",
             "actions": [
-                "merge_object_arrays"
+                "merge_image_arrays"
             ],
             "field_mapping": {
                 "link": [
@@ -112,7 +109,7 @@
             "src::source_2": "images.amenities",
             "src::source_3": null,
             "actions": [
-                "merge_object_arrays"
+                "merge_image_arrays"
             ],
             "field_mapping": {
                 "link": [

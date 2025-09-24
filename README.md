@@ -1,4 +1,5 @@
 # Mapping JSON spec
+```
 {
     "{{result-field-name}}": {
         "src::{{source-name}}": "{{path-in-source}}"
@@ -11,6 +12,7 @@
         }
     },
 }
+```
 
 ## Keys in spec
 * `src::` prefix to indicate if key is source
@@ -31,6 +33,10 @@ if values between source are all equal: copy as-is to destination field.
 `merge_lists` - deduplicate on combination of values
 // TODO: make default on list after all actions are applied
 no action - all equal
+
+`merge_image_arrays`: `merge_object_arrays` with `link` as unique identifier
+// TODO: make identifier configurable and accept multiple identifiers as well
+
 
 * order matters: `merge_lists, add_spaces, to_lowercase`, first action is applied first
 
