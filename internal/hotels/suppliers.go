@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+
+	"github.com/ptrciafae/hotels-merge/internal/mapper"
 )
 
 type Suppliers struct {
@@ -21,21 +23,17 @@ func GetSuppliers() []Suppliers {
 	}
 }
 
-func GetHotels() (*Hotels, error) {
-	// NOTE: I would cache the results for a certain time period to avoid fetching from suppliers on every request
-	// especially since the data are not likely to change very often (list of hotels)
-
-	responses := make([][]byte, 0)
+func FetchAndNormalize(engine *mapper.MappingEngine) (Hotels, error) {
+	responses := map[string]json.RawMessage{} // key: supplier name, value: raw JSON data
 	for _, supplier := range GetSuppliers() {
 		body, err := fetchSupplierData(supplier.Name, supplier.URL)
 		if err != nil {
-			fmt.Println("Error fetching supplier data:", err)
 			continue
 		}
-		responses = append(responses, body)
+		responses[supplier.Name] = body
 	}
 
-	return deduplicateHotels(responses)
+	return deduplicateHotels(responses, engine)
 }
 
 func fetchSupplierData(name, url string) ([]byte, error) {
@@ -57,8 +55,19 @@ func fetchSupplierData(name, url string) ([]byte, error) {
 	return body, nil
 }
 
-func deduplicateHotels(hotelsList [][]byte) (*Hotels, error) {
-	// Implementation for deduplicating hotels based on name and location
+func deduplicateHotels(hotelsList map[string]json.RawMessage, engine *mapper.MappingEngine) (Hotels, error) {
+	normalizedData, err := engine.Transform(hotelsList)
+	if err != nil {
+		return nil, fmt.Errorf("error transforming data: %w", err)
+	}
 
-	return &Hotels{}, nil
+	var hotels Hotels
+	if err := json.Unmarshal(normalizedData, &hotels); err != nil {
+		return nil, fmt.Errorf("error unmarshaling normalized data: %w", err)
+	}
+
+	// Print the normalized hotels in a readable format
+	fmt.Printf("hotels: %+v\n", hotels)
+
+	return hotels, nil
 }
