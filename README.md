@@ -45,7 +45,7 @@ _ASSUMPTION_: multiple hotels can share the same `destination_id`
 
 [As struct](https://github.com/ptrciafae/hotels-merge/blob/16d923e012b0a52608df31faac4a51c56cdb6e69/internal/hotels/hotels.go)
 
-# Design
+# Design: Data Normalization
 
 The core of my approach rests on two principles: the Principle of Least Astonishment and extensibility. To uphold the first, I use a configuration-driven method for handling normalization. At the same time, I’ve designed the configuration to be straightforward to update and flexible enough to accommodate new rules to satisfy the second priciple.
 
@@ -109,6 +109,12 @@ Some fields, require special manipulation, example: `ameneties` where normalizat
 
 - _JSONPath where to extract value_: `Description`
 - Template of JSONPaths: `{{FieldOne}} and {{FieldTwo}}`
+
+# Design: Server
+
+Supplier data is collected and normalized during server startup, then kept in memory as a cache. This approach assumes the data is relatively static and does not change frequently.
+
+In a production environment, the decision of when and how often to refresh supplier data should consider both the number of suppliers and the expected data volume per supplier.
 
 # Development
 

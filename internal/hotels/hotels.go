@@ -14,11 +14,11 @@ type Hotel struct {
 }
 
 type Location struct {
-	Lat     *float64 `json:"lat,omitempty"`
-	Lng     *float64 `json:"lng,omitempty"`
-	Address string   `json:"address,omitempty"`
-	City    string   `json:"city,omitempty"`
-	Country string   `json:"country,omitempty"`
+	Lat     float64 `json:"lat,omitempty"`
+	Lng     float64 `json:"lng,omitempty"`
+	Address string  `json:"address,omitempty"`
+	City    string  `json:"city,omitempty"`
+	Country string  `json:"country,omitempty"`
 }
 
 type Amenities struct {
