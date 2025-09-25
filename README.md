@@ -129,3 +129,5 @@ NOTE: the last unit test is intentionally failing to allow viewing of the logged
 
 - I've tested only on the sample data, I'm sure there are multiple ways the logic might fail. More testin needs to be done.
 - Clean up some of the AI-generated code I haven't touched.
+
+![demo](https://github.com/user-attachments/assets/13a4d8e3-7d8b-4bfa-8961-0d3281bfefea)
