@@ -2,7 +2,7 @@
 
 Web server taking data from various suppliers with non-uniform format and with duplicated value (example:
 [acme](https://5f2be0b4ffc88500167b85a0.mockapi.io/suppliers/acme),
-[acme](https://5f2be0b4ffc88500167b85a0.mockapi.io/suppliers/acme),
+[patagonia](https://5f2be0b4ffc88500167b85a0.mockapi.io/suppliers/patagonia),
 [paperflies](https://5f2be0b4ffc88500167b85a0.mockapi.io/suppliers/paperflies))
 transform it into a unified response ([samples/result.json](https://github.com/ptrciafae/hotels-merge/blob/16d923e012b0a52608df31faac4a51c56cdb6e69/samples/result.json)).
 
@@ -18,7 +18,7 @@ $ go mod tidy
 $ go run cmd/main.go
 ```
 
-3. Service runs on: `127.0.0.1:8085` which you can reach from your browser, through curl, or via Postma
+3. Service runs on: `127.0.0.1:8085` which you can reach from your browser, through curl, or via Postman
 
 # APIs
 
