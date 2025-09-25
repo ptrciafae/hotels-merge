@@ -191,7 +191,6 @@ func (m *MappingEngine) processLeafMapping(mapping map[string]interface{}, sourc
 
 	// extract values from all sources
 	values := m.extractValuesFromSources(fieldMapping.SourcePaths, sources)
-
 	// apply actions if specified
 	if len(fieldMapping.Actions) > 0 {
 		return m.applyActions(values, fieldMapping.Actions, fieldMapping)
@@ -325,7 +324,7 @@ func (*MappingEngine) processTemplate(sourceData json.RawMessage, template strin
 			// extract value for this field
 			value := gjson.Get(string(sourceData), fieldName)
 			if value.Exists() {
-				result = strings.ReplaceAll(result, placeholder, value.String())
+				result = strings.ReplaceAll(result, placeholder, strings.TrimSpace(value.String()))
 			} else {
 				result = strings.ReplaceAll(result, placeholder, "")
 			}
@@ -340,17 +339,22 @@ func (*MappingEngine) processTemplate(sourceData json.RawMessage, template strin
 	return result
 }
 
-// selectBestValue chooses the best value from available sources
-// default behavior for non-string: first value lol
+// selectBestValue chooses the best value from available sources.
+// for non-strings: returns the first non-nil value
+// for strings: delegates to selectStringBestValue for custom logic.
 func (m *MappingEngine) selectBestValue(values map[string]interface{}) interface{} {
 	for _, value := range values {
 		if value == nil {
 			continue
 		}
-		if str, ok := value.(string); ok && strings.TrimSpace(str) != "" {
-			return m.selectStringBestValue(values)
-		} else {
-			return value // NOTE: actual logic, if there's variation in values
+
+		switch v := value.(type) {
+		case string:
+			if strings.TrimSpace(v) != "" {
+				return m.selectStringBestValue(values)
+			}
+		default:
+			return v // first non-nil, non-string value
 		}
 	}
 	return nil

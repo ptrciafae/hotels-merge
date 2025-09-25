@@ -3,8 +3,8 @@ package hotels
 type Hotels []Hotel
 
 type Hotel struct {
-	ID                string    `json:"id"`
-	DestinationID     int       `json:"destination_id"`
+	Id                string    `json:"id"`
+	DestinationId     int       `json:"destination_id"`
 	Name              string    `json:"name"`
 	Location          Location  `json:"location"`
 	Description       string    `json:"description"`
@@ -14,11 +14,11 @@ type Hotel struct {
 }
 
 type Location struct {
-	Lat     float64 `json:"lat"`
-	Lng     float64 `json:"lng"`
-	Address string  `json:"address"`
-	City    string  `json:"city"`
-	Country string  `json:"country"`
+	Lat     *float64 `json:"lat"`
+	Lng     *float64 `json:"lng"`
+	Address string   `json:"address"`
+	City    string   `json:"city"`
+	Country string   `json:"country"`
 }
 
 type Amenities struct {

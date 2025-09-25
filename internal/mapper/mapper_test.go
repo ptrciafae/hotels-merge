@@ -1,12 +1,12 @@
-package mapper
+package mapper_test
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"os"
 	"testing"
 
+	"github.com/ptrciafae/hotels-merge/internal/mapper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -31,11 +31,11 @@ func TestMappingEngine_BasicTransformation(t *testing.T) {
 		}
 	}`
 
-	engine, err := NewMappingEngine([]byte(mappingConfig))
+	engine, err := mapper.NewMappingEngine([]byte(mappingConfig))
 	require.NoError(t, err)
 
 	// sample source data
-	sources := SourceData{
+	sources := mapper.SourceData{
 		"source_1": json.RawMessage(`[{"Id": "123", "Name": "Hotel A", "DestinationId": 1}]`),
 		"source_2": json.RawMessage(`[{"id": "123", "name": "Hotel A", "destination": 1}]`),
 		"source_3": json.RawMessage(`[{"hotel_id": "123", "hotel_name": "Hotel A", "destination_id": 1}]`),
@@ -78,12 +78,12 @@ func TestMappingEngine_NestedJSONPath(t *testing.T) {
 	}
 	}`
 
-	engine, err := NewMappingEngine([]byte(mappingConfig))
+	engine, err := mapper.NewMappingEngine([]byte(mappingConfig))
 	require.NoError(t, err)
 
-	sources := SourceData{
-		"source_1": json.RawMessage(`[{"Id": "123","Latitude":1.264751,"Longitude":103.824006}]`),
-		"source_2": json.RawMessage(`[{"id": "123","lat":1.264751,"lng":103.824006}]`),
+	sources := mapper.SourceData{
+		"source_1": json.RawMessage(`[{"Id": "123","Latitude":35.6926,"Longitude":139.690965}]`),
+		"source_2": json.RawMessage(`[{"id": "123","lat":35.6926,"lng":139.690965}]`),
 		"source_3": json.RawMessage(`[{"hotel_id": "123","location": {"country": "Singapore", "city": "Singapore"}}]`),
 	}
 
@@ -95,11 +95,49 @@ func TestMappingEngine_NestedJSONPath(t *testing.T) {
 	require.NoError(t, err)
 
 	location := transformed[0]["location"].(map[string]interface{})
-	assert.Equal(t, 1.264751, location["lat"])
-	assert.Equal(t, 103.824006, location["lng"])
+	assert.Equal(t, 35.6926, location["lat"])
+	assert.Equal(t, 139.690965, location["lng"])
 	assert.Equal(t, "Singapore", location["country"])
 }
 
+func TestMappingEngine_DifferentDataTypes(t *testing.T) {
+	mappingConfig := `{
+		"id": {
+			"src::source_1": "Id",
+			"src::source_2": "id",
+			"src::source_3": "hotel_id"
+		},
+		"location": {
+			"lat": {
+				"src::source_1": "Latitude",
+				"src::source_2": "lat"
+			},
+			"lng": {
+				"src::source_1": "Longitude",
+				"src::source_2": "lng"
+			}
+		}
+	}`
+
+	engine, err := mapper.NewMappingEngine([]byte(mappingConfig))
+	require.NoError(t, err)
+
+	sources := mapper.SourceData{
+		"source_1": json.RawMessage(`[{"Id": "123","Latitude":"","Longitude":""}]`),
+		"source_2": json.RawMessage(`[{"id": "123","lat":35.6926,"lng":139.690965}]`),
+	}
+
+	result, err := engine.Transform(sources)
+	require.NoError(t, err)
+
+	var transformed []map[string]interface{}
+	err = json.Unmarshal(result, &transformed)
+	require.NoError(t, err)
+
+	location := transformed[0]["location"].(map[string]interface{})
+	assert.Equal(t, 35.6926, location["lat"])
+	assert.Equal(t, 139.690965, location["lng"])
+}
 func TestMappingEngine_GeneralAmenities(t *testing.T) {
 	mappingConfig := `{
 		"id": {
@@ -117,10 +155,10 @@ func TestMappingEngine_GeneralAmenities(t *testing.T) {
 		}
 	}`
 
-	engine, err := NewMappingEngine([]byte(mappingConfig))
+	engine, err := mapper.NewMappingEngine([]byte(mappingConfig))
 	require.NoError(t, err)
 
-	sources := SourceData{
+	sources := mapper.SourceData{
 		"source_1": json.RawMessage(`[{"Id": "123", "Facilities": ["WiFi", "BusinessCenter", "gym"]}]`),
 		"source_3": json.RawMessage(`[{"hotel_id": "123","amenities": {"general": ["outdoor pool", "GYM"]}}]`),
 	}
@@ -159,10 +197,10 @@ func TestMappingEngine_RoomAmenities(t *testing.T) {
 		}
 	}`
 
-	engine, err := NewMappingEngine([]byte(mappingConfig))
+	engine, err := mapper.NewMappingEngine([]byte(mappingConfig))
 	require.NoError(t, err)
 
-	sources := SourceData{
+	sources := mapper.SourceData{
 		"source_1": json.RawMessage(`[{"Id": "123", "Facilities": ["Aircon", "Tv", "gym"]}]`),
 		"source_2": json.RawMessage(`[{"id": "123", "amenities": ["Aircon", "Tv", "Tub"]}]`),
 		"source_3": json.RawMessage(`[{"hotel_id": "123","amenities": {"room": ["outdoor pool", "BathTub"]}}]`),
@@ -206,12 +244,12 @@ func TestMappingEngine_ImageArrayProcessing(t *testing.T) {
 		}
 	}`
 
-	engine, err := NewMappingEngine([]byte(mappingConfig))
+	engine, err := mapper.NewMappingEngine([]byte(mappingConfig))
 	if err != nil {
 		panic(err)
 	}
 
-	sources := SourceData{
+	sources := mapper.SourceData{
 		"source_2": json.RawMessage(`[{
 			"id": "123",
 			"images": {
@@ -244,7 +282,6 @@ func TestMappingEngine_ImageArrayProcessing(t *testing.T) {
 	}
 
 	images := transformed[0]["images"].(map[string]interface{})
-	fmt.Println("Image link:", images)
 	rooms := images["rooms"].([]interface{})
 
 	expectedLinks := map[string]bool{
@@ -277,10 +314,10 @@ func TestMappingEngine_TemplateProcessing(t *testing.T) {
 		}
 	}`
 
-	engine, err := NewMappingEngine([]byte(mappingConfig))
+	engine, err := mapper.NewMappingEngine([]byte(mappingConfig))
 	require.NoError(t, err)
 
-	sources := SourceData{
+	sources := mapper.SourceData{
 		"source_1": json.RawMessage(`[{"Id": "123", "Address": "123 Main St", "PostalCode": "12345"}]`),
 		"source_2": json.RawMessage(`[{"id": "123", "address": "456 Oak Ave"}]`),
 	}
@@ -324,10 +361,10 @@ func TestMappingEngine_FromSampleFiles(t *testing.T) {
 	require.NoError(t, err)
 
 	// perform test
-	engine, err := NewMappingEngine(mappingConfig)
+	engine, err := mapper.NewMappingEngine(mappingConfig)
 	require.NoError(t, err)
 
-	sources := SourceData{
+	sources := mapper.SourceData{
 		"source_1": source1,
 		"source_2": source2,
 		"source_3": source3,
@@ -335,6 +372,5 @@ func TestMappingEngine_FromSampleFiles(t *testing.T) {
 	result, err := engine.Transform(sources)
 	require.NoError(t, err)
 
-	fmt.Println("Transformed result:", string(result))
 	assert.NotEqual(t, result, result) // TODO: implement actual assertion logic
 }
