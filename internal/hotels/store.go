@@ -27,10 +27,11 @@ func (s *HotelStore) FilterById(id string) Hotels {
 }
 
 func (s *HotelStore) FilterByDestination(destinationId int) Hotels {
+	var result Hotels
 	for _, h := range s.hotels {
 		if h.DestinationId == destinationId {
-			return Hotels{h}
+			result = append(result, h)
 		}
 	}
-	return Hotels{}
+	return result
 }

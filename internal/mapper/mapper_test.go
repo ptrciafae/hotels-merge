@@ -2,6 +2,7 @@ package mapper_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"testing"
@@ -372,5 +373,7 @@ func TestMappingEngine_FromSampleFiles(t *testing.T) {
 	result, err := engine.Transform(sources)
 	require.NoError(t, err)
 
+	fmt.Println(string(result))
+	// NOTE: intentionally failing the test to output the result
 	assert.NotEqual(t, result, result) // TODO: implement actual assertion logic
 }
