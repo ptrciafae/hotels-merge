@@ -17,13 +17,11 @@
     "location": {
         "lat": {
             "src::acme": "Latitude",
-            "src::patagonia": "lat",
-            "src::paperflies": null
+            "src::patagonia": "lat"
         },
         "lng": {
             "src::acme": "Longitude",
-            "src::patagonia": "lng",
-            "src::paperflies": null
+            "src::patagonia": "lng"
         },
         "address": {
             "src::acme": "{{Address}}, {{PostalCode}}",
@@ -31,13 +29,10 @@
             "src::paperflies": "location.address"
         },
         "city": {
-            "src::acme": "City",
-            "src::patagonia": null,
-            "src::paperflies": null
+            "src::acme": "City"
         },
         "country": {
             "src::acme": "Country",
-            "src::patagonia": null,
             "src::paperflies": "location.country"
         }
     },
@@ -49,7 +44,6 @@
     "amenities": {
         "general": {
             "src::acme": "Facilities",
-            "src::patagonia": null,
             "src::paperflies": "amenities.general",
             "actions": [
                 "normalize_general_amenities"
@@ -66,7 +60,6 @@
     },
     "images": {
         "rooms": {
-            "src::acme": null,
             "src::patagonia": "images.rooms",
             "src::paperflies": "images.rooms",
             "actions": [
@@ -84,8 +77,6 @@
             }
         },
         "site": {
-            "src::acme": null,
-            "src::patagonia": null,
             "src::paperflies": "images.site",
             "actions": [
                 "merge_image_arrays"
@@ -121,8 +112,6 @@
         }
     },
     "booking_conditions": {
-        "src::acme": null,
-        "src::patagonia": null,
         "src::paperflies": "booking_conditions"
     }
 }
