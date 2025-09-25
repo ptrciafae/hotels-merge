@@ -22,7 +22,8 @@ func (s *HotelStore) FilterById(id string) Hotels {
 			return Hotels{h}
 		}
 	}
-	return nil
+
+	return Hotels{}
 }
 
 func (s *HotelStore) FilterByDestination(destinationId int) Hotels {
@@ -31,5 +32,5 @@ func (s *HotelStore) FilterByDestination(destinationId int) Hotels {
 			return Hotels{h}
 		}
 	}
-	return nil
+	return Hotels{}
 }

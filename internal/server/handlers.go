@@ -17,13 +17,23 @@ func NewHandlers(store *hotels.HotelStore) *Handlers {
 }
 
 func (h *Handlers) handleQueryHotels(w http.ResponseWriter, r *http.Request) {
-	// TODO: more validation on query params
-
 	query := r.URL.Query()
 	var result hotels.Hotels
-	query.Get("id")
 
-	if id := query.Get("id"); id != "" {
+	id := query.Get("id")
+	destinationId := query.Get("destination_id")
+
+	if id == "" && destinationId == "" {
+		h.handleGetAllHotels(w, r)
+		return
+	}
+
+	if id != "" && destinationId != "" {
+		http.Error(w, "Only one query parameter (id or destination_id) can be provided at a time", http.StatusBadRequest)
+		return
+	}
+
+	if id != "" {
 		result = h.store.FilterById(id)
 	} else if destId := query.Get("destination_id"); destId != "" {
 		destIdInt, err := strconv.Atoi(destId)

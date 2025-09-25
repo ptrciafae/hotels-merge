@@ -123,7 +123,7 @@ func TestMappingEngine_DifferentDataTypes(t *testing.T) {
 	require.NoError(t, err)
 
 	sources := mapper.SourceData{
-		"source_1": json.RawMessage(`[{"Id": "123","Latitude":"","Longitude":"}]`),
+		"source_1": json.RawMessage(`[{"Id": "123","Latitude":"","Longitude":""}]`),
 		"source_2": json.RawMessage(`[{"id": "123","lat":35.6926,"lng":139.690965}]`),
 	}
 

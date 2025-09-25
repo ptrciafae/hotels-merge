@@ -66,7 +66,6 @@ func deduplicateHotels(hotelsList map[string]json.RawMessage, engine *mapper.Map
 		return nil, fmt.Errorf("error unmarshaling normalized data: %w", err)
 	}
 
-	// Print the normalized hotels in a readable format
 	fmt.Printf("hotels: %+v\n", hotels)
 
 	return hotels, nil
