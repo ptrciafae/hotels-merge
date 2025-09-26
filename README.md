@@ -95,20 +95,50 @@ Some fields, require special manipulation, example: `ameneties` where normalizat
 }
 ```
 
-## Keys in spec
+## Keys in mapping spec
 
-- `src::` prefix to indicate if key is source and source name
-- reserved keys
+Keys within the spec are interpreted based on their prefix or reserved usage:
 
-1. `actions` for custom logic on merging values and other normalization logic
-1. `field_mapping` particularly for `merge_image_arrays` where the array items are objects and mappings from supplier format to response is required
+1. _`src::` Prefix_
 
-- no prefix - key is a field name in the result
+- Indicates that the value is a **JSON path** used to extract data from supplier payloads.
+- Only in leaf key-value pairs.
+- Example:
 
-## Values in spec
+  ```json
+  {
+    "name": {
+      "src::supplier_1": "Name"
+    }
+  }
+  ```
 
-- _JSONPath where to extract value_: `Description`
-- Template of JSONPaths: `{{FieldOne}} and {{FieldTwo}}`
+  This means: in `supplier_1`’s data, use the field `"Name"` as the value for the field `"name"` in the response.
+
+2. _Reserved Keys_
+
+Certain keys have special meaning and should not be used as normal fields:
+
+- **`actions`** → Defines custom logic for merging values or applying additional normalization rules.
+- **`field_mapping`** → Used in cases such as `merge_image_arrays`, where array items are objects and mappings are needed from supplier-specific fields to response fields.
+
+### 3. _No Prefix_
+
+- Keys without a prefix are treated as field names in the final response.
+
+## Values in mapping spec
+
+Values in the spec can take different forms depending on how the data should be resolved:
+
+1. _Direct JSONPath_
+
+- A single JSONPath string indicating where to extract the value from the supplier payload.
+- Example: `{"src::supplier_1": "Description"}` Extracts the value of the `Description` field from `supplier_1`
+
+2. _Template of JSONPaths_
+
+- A string template containing one or more JSONPaths wrapped in {{ }}.
+- Example: `{"src::supplier_1": "{{FieldOne}} and {{FieldTwo}}"}` concatenates FieldOne and FieldTwo from supplier_1 into a single string
 
 # Design: Server
 

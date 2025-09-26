@@ -36,7 +36,7 @@ func TestMappingEngine_BasicTransformation(t *testing.T) {
 	require.NoError(t, err)
 
 	// sample source data
-	sources := mapper.SourceData{
+	sources := mapper.SupplierData{
 		"source_1": json.RawMessage(`[{"Id": "123", "Name": "Hotel A", "DestinationId": 1}]`),
 		"source_2": json.RawMessage(`[{"id": "123", "name": "Hotel A", "destination": 1}]`),
 		"source_3": json.RawMessage(`[{"hotel_id": "123", "hotel_name": "Hotel A", "destination_id": 1}]`),
@@ -82,7 +82,7 @@ func TestMappingEngine_NestedJSONPath(t *testing.T) {
 	engine, err := mapper.NewMappingEngine([]byte(mappingConfig))
 	require.NoError(t, err)
 
-	sources := mapper.SourceData{
+	sources := mapper.SupplierData{
 		"source_1": json.RawMessage(`[{"Id": "123","Latitude":35.6926,"Longitude":139.690965}]`),
 		"source_2": json.RawMessage(`[{"id": "123","lat":35.6926,"lng":139.690965}]`),
 		"source_3": json.RawMessage(`[{"hotel_id": "123","location": {"country": "Singapore", "city": "Singapore"}}]`),
@@ -123,7 +123,7 @@ func TestMappingEngine_DifferentDataTypes(t *testing.T) {
 	engine, err := mapper.NewMappingEngine([]byte(mappingConfig))
 	require.NoError(t, err)
 
-	sources := mapper.SourceData{
+	sources := mapper.SupplierData{
 		"source_1": json.RawMessage(`[{"Id": "123","Latitude":"","Longitude":""}]`),
 		"source_2": json.RawMessage(`[{"id": "123","lat":35.6926,"lng":139.690965}]`),
 	}
@@ -159,7 +159,7 @@ func TestMappingEngine_GeneralAmenities(t *testing.T) {
 	engine, err := mapper.NewMappingEngine([]byte(mappingConfig))
 	require.NoError(t, err)
 
-	sources := mapper.SourceData{
+	sources := mapper.SupplierData{
 		"source_1": json.RawMessage(`[{"Id": "123", "Facilities": ["WiFi", "BusinessCenter", "gym"]}]`),
 		"source_3": json.RawMessage(`[{"hotel_id": "123","amenities": {"general": ["outdoor pool", "GYM"]}}]`),
 	}
@@ -201,7 +201,7 @@ func TestMappingEngine_RoomAmenities(t *testing.T) {
 	engine, err := mapper.NewMappingEngine([]byte(mappingConfig))
 	require.NoError(t, err)
 
-	sources := mapper.SourceData{
+	sources := mapper.SupplierData{
 		"source_1": json.RawMessage(`[{"Id": "123", "Facilities": ["Aircon", "Tv", "gym"]}]`),
 		"source_2": json.RawMessage(`[{"id": "123", "amenities": ["Aircon", "Tv", "Tub"]}]`),
 		"source_3": json.RawMessage(`[{"hotel_id": "123","amenities": {"room": ["outdoor pool", "BathTub"]}}]`),
@@ -250,7 +250,7 @@ func TestMappingEngine_ImageArrayProcessing(t *testing.T) {
 		panic(err)
 	}
 
-	sources := mapper.SourceData{
+	sources := mapper.SupplierData{
 		"source_2": json.RawMessage(`[{
 			"id": "123",
 			"images": {
@@ -318,7 +318,7 @@ func TestMappingEngine_TemplateProcessing(t *testing.T) {
 	engine, err := mapper.NewMappingEngine([]byte(mappingConfig))
 	require.NoError(t, err)
 
-	sources := mapper.SourceData{
+	sources := mapper.SupplierData{
 		"source_1": json.RawMessage(`[{"Id": "123", "Address": "123 Main St", "PostalCode": "12345"}]`),
 		"source_2": json.RawMessage(`[{"id": "123", "address": "456 Oak Ave"}]`),
 	}
@@ -365,7 +365,7 @@ func TestMappingEngine_FromSampleFiles(t *testing.T) {
 	engine, err := mapper.NewMappingEngine(mappingConfig)
 	require.NoError(t, err)
 
-	sources := mapper.SourceData{
+	sources := mapper.SupplierData{
 		"source_1": source1,
 		"source_2": source2,
 		"source_3": source3,

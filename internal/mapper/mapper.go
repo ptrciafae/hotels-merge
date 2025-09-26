@@ -9,6 +9,42 @@ import (
 	"github.com/tidwall/gjson"
 )
 
+const dataSupplierPrefix = "src::"
+
+// list of all known general amenities
+// if value from supplier is not in list, discard value
+var generalAmenity = map[string]string{
+	"businesscenter":  "business center",
+	"business center": "business center",
+	"gym":             "gym",
+	"outdoor pool":    "outdoor pool",
+	"indoor pool":     "indoor pool",
+	"pool":            "outdoor pool", // NOTE: assuming pool means outdoor pool
+	"airport shuttle": "airport shuttle",
+	"childcare":       "childcare",
+	"wifi":            "wifi",
+	"drycleaning":     "dry cleaning",
+	"dry cleaning":    "dry cleaning",
+	"breakfast":       "breakfast",
+	"bar":             "bar",       // NOTE: not in sample result.json but included for completeness, also assumed it's a general amenetity
+	"parking":         "parking",   // NOTE: not in sample result.json but included for completeness, also assumed it's a general amenetity
+	"concierge":       "concierge", // NOTE: not in sample result.json but included for completeness, also assumed it's a general amenetity
+}
+
+// list of all known room amenities
+// if value from supplier is not in list, discard value
+var roomAmenity = map[string]string{
+	"aircon":         "aircon",
+	"tv":             "tv",
+	"coffee machine": "coffee machine",
+	"kettle":         "kettle",
+	"hair dryer":     "hair dryer",
+	"iron":           "iron",
+	"bathtub":        "bathtub",
+	"tub":            "bathtub",
+	"minibar":        "minibar", // NOTE: not in sample result.json but included for completeness, kept in room amenity as in sample_3.json
+}
+
 // MappingEngine handles data transformation based on mapping configuration
 type MappingEngine struct {
 	config MappingConfig
@@ -17,19 +53,19 @@ type MappingEngine struct {
 // MappingConfig represents the structure of mapping.json
 type MappingConfig map[string]interface{}
 
-// FieldMapping represents a field mapping with source paths and actions
+// FieldMapping represents a field mapping with supplier paths and actions
 type FieldMapping struct {
-	SourcePaths  map[string]interface{} // key: source_1, source_2, source_3 -> value: jsonpath or template
-	Actions      []string               // actions to apply
-	FieldMapping map[string][]string    // key: field name -> value: possible source field names
+	SupplierPaths           map[string]interface{} // key: supplier_1, supplier_2, supplier_3, value: jsonpath or template
+	Actions                 []string               // actions to apply
+	ObjectArrayFieldMapping map[string][]string    // key: field name, value: possible supplier field names, used for merging object arrays
 
 }
 
-// SourceData holds data from all sources
-type SourceData map[string]json.RawMessage
+// SupplierData holds data from all suppliers
+type SupplierData map[string]json.RawMessage
 
-// HotelSourceData represents the processed hotel data from all sources for a single hotel
-type HotelSourceData map[string]json.RawMessage
+// HotelSupplierData represents the processed hotel data from all suppliers for a single hotel
+type HotelSupplierData map[string]json.RawMessage
 
 // NewMappingEngine creates a new mapping engine
 func NewMappingEngine(mappingJSON []byte) (*MappingEngine, error) {
@@ -45,19 +81,22 @@ func NewMappingEngine(mappingJSON []byte) (*MappingEngine, error) {
 	return engine, nil
 }
 
-// Transform applies the mapping to source data
-func (m *MappingEngine) Transform(sources SourceData) (json.RawMessage, error) {
-	// parse each source's array and group by hotel id
-	hotelGroups, err := m.groupHotelsById(sources)
+// Transform applies the mapping to supplier data
+func (m *MappingEngine) Transform(suppliers SupplierData) (json.RawMessage, error) {
+	// parse each supplier's array and group by hotel id
+	// result: key: hotel id, value: hotel data from all suppliers
+	hotelGroups, err := m.groupHotelsById(suppliers)
 	if err != nil {
 		return nil, fmt.Errorf("failed to group hotels: %w", err)
 	}
 
-	// Step 2: Transform each hotel group
+	// transform each hotel group
 	var results []map[string]interface{}
-	for hotelId, hotelSources := range hotelGroups {
+	for hotelId, hotelSuppliers := range hotelGroups {
 		result := make(map[string]interface{})
-		err := m.processMapping("", m.config, hotelSources, result)
+		err := m.processMapping("", m.config, hotelSuppliers, result)
+
+		// skip hotel if mapping cannot be processed
 		if err != nil {
 			fmt.Printf("Failed to process hotel %s: %v\n", hotelId, err)
 			continue
@@ -66,7 +105,7 @@ func (m *MappingEngine) Transform(sources SourceData) (json.RawMessage, error) {
 		results = append(results, result)
 	}
 
-	// Step 3: Marshal the results array
+	// marshal the results array
 	output, err := json.Marshal(results)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal results: %w", err)
@@ -75,36 +114,33 @@ func (m *MappingEngine) Transform(sources SourceData) (json.RawMessage, error) {
 	return json.RawMessage(output), nil
 }
 
-// groupHotelsById processes source arrays and groups hotels by their Ids
-func (m *MappingEngine) groupHotelsById(sources SourceData) (map[string]HotelSourceData, error) {
-	hotelGroups := make(map[string]HotelSourceData)
+// groupHotelsById processes supplier arrays and groups hotels by their Ids
+func (m *MappingEngine) groupHotelsById(suppliers SupplierData) (map[string]HotelSupplierData, error) {
+	hotelGroups := make(map[string]HotelSupplierData)
 
-	// Id field mappings for each source
-	idFieldMappings, err := m.extractIdFieldMapping()
-	if err != nil {
-		return nil, fmt.Errorf("failed to extract Id field mappings: %w", err)
-	}
+	// id field mappings for each supplier
+	idFieldMappings := m.extractIdFieldMapping()
 
-	// Process each source
-	for sourceKey, sourceData := range sources {
-		// Parse the JSON array
-		sourceArray := gjson.Get(string(sourceData), "@this")
-		if !sourceArray.IsArray() {
-			return nil, fmt.Errorf("source %s is not an array", sourceKey)
+	// process each supplier
+	for supplierKey, supplierData := range suppliers {
+		// parse the JSON array
+		supplierArray := gjson.Get(string(supplierData), "@this")
+		if !supplierArray.IsArray() {
+			return nil, fmt.Errorf("supplier response %s is not an array", supplierKey)
 		}
 
-		// Get the id field name for this source
-		idField, exists := idFieldMappings[sourceKey]
+		// get the id field name for this supplier
+		idField, exists := idFieldMappings[supplierKey]
 		if !exists {
-			return nil, fmt.Errorf("no id field mapping for source %s", sourceKey)
+			return nil, fmt.Errorf("no id field mapping for supplier %s", supplierKey)
 		}
 
 		// process each hotel in the array
-		for _, hotelItem := range sourceArray.Array() {
+		for _, hotelItem := range supplierArray.Array() {
 			// Extract hotel id
 			hotelId := gjson.Get(hotelItem.Raw, idField)
 			if !hotelId.Exists() || hotelId.String() == "" {
-				fmt.Printf("Warning: No id found for hotel in source %s\n", sourceKey)
+				fmt.Printf("Warning: No id found for hotel in supplier %s\n", supplierKey)
 				continue
 			}
 
@@ -112,85 +148,82 @@ func (m *MappingEngine) groupHotelsById(sources SourceData) (map[string]HotelSou
 
 			// initialize hotel group if it doesn't exist
 			if hotelGroups[hotelIdStr] == nil {
-				hotelGroups[hotelIdStr] = make(HotelSourceData)
+				hotelGroups[hotelIdStr] = make(HotelSupplierData)
 			}
 
-			// store this hotel's data for this source
-			hotelGroups[hotelIdStr][sourceKey] = json.RawMessage(hotelItem.Raw)
+			// store this hotel's data for this supplier
+			hotelGroups[hotelIdStr][supplierKey] = json.RawMessage(hotelItem.Raw)
 		}
 	}
 
 	return hotelGroups, nil
 }
 
-func (m *MappingEngine) extractIdFieldMapping() (map[string]string, error) {
-	// extracts from your existing mapping.json:
+func (m *MappingEngine) extractIdFieldMapping() map[string]string {
+	// extracts from existing mapping.json:
 	// "id": {
-	//     "src::source_1": "Id",
-	//     "src::source_2": "id",
-	//     "src::source_3": "hotel_id"
+	//     "src::supplier_1": "Id",
+	//     "src::supplier_2": "id",
+	//     "src::supplier_3": "hotel_id"
 	// }
 
 	idMappings := make(map[string]string)
 	idConfig := m.config["id"] // gets the "id" mapping, update key if result id field changes
 
 	for key, value := range idConfig.(map[string]interface{}) {
-		if strings.HasPrefix(key, "src::") {
-			sourceName := strings.TrimPrefix(key, "src::") // "source_1", "source_2", etc.
-			idMappings[sourceName] = value.(string)        // "Id", "id", "hotel_id"
+		if strings.HasPrefix(key, dataSupplierPrefix) {
+			supplierName := strings.TrimPrefix(key, dataSupplierPrefix) // "supplier_1", "supplier_2", etc.
+			idMappings[supplierName] = value.(string)                   // "Id", "id", "hotel_id"
 		}
 	}
 
-	return idMappings, nil
+	return idMappings
 }
 
 // processMapping recursively processes the mapping configuration
-func (m *MappingEngine) processMapping(currentPath string, config interface{}, sources HotelSourceData, result map[string]interface{}) error {
+func (m *MappingEngine) processMapping(currentPath string, config interface{}, suppliers HotelSupplierData, result map[string]interface{}) error {
 
 	switch v := config.(type) {
 	case map[string]interface{}:
-		// check if this is a leaf node with source mappings
 		if m.isLeafMapping(v) {
-			value, err := m.processLeafMapping(v, sources)
+			value, err := m.processLeafMapping(v, suppliers)
 			if err != nil {
 				return err
 			}
 			m.setNestedValue(result, currentPath, value)
-		} else {
-			// Recursive processing for nested objects
+		} else { // recursive processing for nested objects
 			for key, value := range v {
 				newPath := key
 				if currentPath != "" {
 					newPath = currentPath + "." + key
 				}
-				err := m.processMapping(newPath, value, sources, result)
-				if err != nil {
+				if err := m.processMapping(newPath, value, suppliers, result); err != nil {
 					return err
 				}
 			}
 		}
 	case MappingConfig: // unfortunately golang doesn't support type aliasing in type switches
-		return m.processMapping(currentPath, map[string]interface{}(v), sources, result)
+		return m.processMapping(currentPath, map[string]interface{}(v), suppliers, result)
 	}
 	return nil
 }
 
-// isLeafMapping checks if a mapping object contains source definitions
+// isLeafMapping checks if a mapping object contains supplier definitions
 func (*MappingEngine) isLeafMapping(mapping map[string]interface{}) bool {
 	for key := range mapping {
-		if strings.HasPrefix(key, "src::") {
+		if strings.HasPrefix(key, dataSupplierPrefix) {
 			return true
 		}
 	}
 	return false
 }
 
-// processLeafMapping processes a leaf mapping with source paths
-func (m *MappingEngine) processLeafMapping(mapping map[string]interface{}, sources HotelSourceData) (interface{}, error) {
+// processLeafMapping processes a leaf mapping with supplier paths
+func (m *MappingEngine) processLeafMapping(mapping map[string]interface{}, suppliers HotelSupplierData) (interface{}, error) {
 	fieldMapping := m.parseFieldMapping(mapping)
 
-	// extract values from all sources
-	values := m.extractValuesFromSources(fieldMapping.SourcePaths, sources)
+	// extract values from all suppliers
+	values := m.extractValuesFromSuppliers(fieldMapping.SupplierPaths, suppliers)
 	// apply actions if specified
 	if len(fieldMapping.Actions) > 0 {
 		return m.applyActions(values, fieldMapping.Actions, fieldMapping)
@@ -202,14 +235,14 @@ func (m *MappingEngine) processLeafMapping(mapping map[string]interface{}, sourc
 // parseFieldMapping converts raw mapping to FieldMapping struct
 func (*MappingEngine) parseFieldMapping(mapping map[string]interface{}) FieldMapping {
 	fieldMapping := FieldMapping{
-		SourcePaths:  make(map[string]interface{}),
-		Actions:      []string{},
-		FieldMapping: make(map[string][]string),
+		SupplierPaths:           make(map[string]interface{}),
+		Actions:                 []string{},
+		ObjectArrayFieldMapping: make(map[string][]string),
 	}
 
 	for key, value := range mapping {
-		if strings.HasPrefix(key, "src::") {
-			fieldMapping.SourcePaths[key] = value
+		if strings.HasPrefix(key, dataSupplierPrefix) {
+			fieldMapping.SupplierPaths[key] = value
 		} else if key == "actions" {
 			if actions, ok := value.([]interface{}); ok {
 				for _, action := range actions {
@@ -228,7 +261,7 @@ func (*MappingEngine) parseFieldMapping(mapping map[string]interface{}) FieldMap
 								stringList = append(stringList, fieldStr)
 							}
 						}
-						fieldMapping.FieldMapping[fieldName] = stringList
+						fieldMapping.ObjectArrayFieldMapping[fieldName] = stringList
 					}
 				}
 			}
@@ -239,16 +272,16 @@ func (*MappingEngine) parseFieldMapping(mapping map[string]interface{}) FieldMap
 	return fieldMapping
 }
 
-// extractValuesFromSources extracts values from all sources using JSONPath or templates
-func (m *MappingEngine) extractValuesFromSources(sourcePaths map[string]interface{}, sources HotelSourceData) map[string]interface{} {
+// extractValuesFromSuppliers extracts values from all suppliers using JSONPath or templates
+func (m *MappingEngine) extractValuesFromSuppliers(supplierPaths map[string]interface{}, suppliers HotelSupplierData) map[string]interface{} {
 	values := make(map[string]interface{})
 
-	for sourceKey, pathOrTemplate := range sourcePaths {
-		sourceName := strings.TrimPrefix(sourceKey, "src::")
-		if sourceData, hasSource := sources[sourceName]; hasSource {
-			value := m.extractValue(sourceData, pathOrTemplate)
+	for supplierKey, pathOrTemplate := range supplierPaths {
+		supplierName := strings.TrimPrefix(supplierKey, dataSupplierPrefix)
+		if supplierData, hasSupplier := suppliers[supplierName]; hasSupplier {
+			value := m.extractValue(supplierData, pathOrTemplate)
 			if value != nil {
-				values[sourceKey] = value
+				values[supplierKey] = value
 			}
 		}
 	}
@@ -257,7 +290,7 @@ func (m *MappingEngine) extractValuesFromSources(sourcePaths map[string]interfac
 }
 
 // extractValue extracts a value using JSONPath or template
-func (m *MappingEngine) extractValue(sourceData json.RawMessage, pathOrTemplate interface{}) interface{} {
+func (m *MappingEngine) extractValue(supplierData json.RawMessage, pathOrTemplate interface{}) interface{} {
 	if pathOrTemplate == nil {
 		return nil
 	}
@@ -269,11 +302,11 @@ func (m *MappingEngine) extractValue(sourceData json.RawMessage, pathOrTemplate 
 
 	// handle template strings (e.g., "{{Address}}, {{PostalCode}}")
 	if m.isTemplate(pathStr) {
-		return m.processTemplate(sourceData, pathStr)
+		return m.processTemplate(supplierData, pathStr)
 	}
 
 	// handle regular JSONPath
-	result := gjson.Get(string(sourceData), pathStr)
+	result := gjson.Get(string(supplierData), pathStr)
 	if !result.Exists() {
 		return nil
 	}
@@ -310,7 +343,7 @@ func (*MappingEngine) isTemplate(str string) bool {
 }
 
 // processTemplate processes template strings like "{{Address}}, {{PostalCode}}"
-func (*MappingEngine) processTemplate(sourceData json.RawMessage, template string) interface{} {
+func (*MappingEngine) processTemplate(supplierData json.RawMessage, template string) interface{} {
 	// find all template variables
 	re := regexp.MustCompile(`\{\{([^}]+)\}\}`)
 	matches := re.FindAllStringSubmatch(template, -1)
@@ -322,7 +355,7 @@ func (*MappingEngine) processTemplate(sourceData json.RawMessage, template strin
 			placeholder := match[0]
 
 			// extract value for this field
-			value := gjson.Get(string(sourceData), fieldName)
+			value := gjson.Get(string(supplierData), fieldName)
 			if value.Exists() {
 				result = strings.ReplaceAll(result, placeholder, strings.TrimSpace(value.String()))
 			} else {
@@ -339,9 +372,10 @@ func (*MappingEngine) processTemplate(sourceData json.RawMessage, template strin
 	return result
 }
 
-// selectBestValue chooses the best value from available sources.
+// selectBestValue chooses the best value from available suppliers
 // for non-strings: returns the first non-nil value
-// for strings: delegates to selectStringBestValue for custom logic.
+// for strings: delegates to selectStringBestValue for custom logic
+// NOTE: can be configurable
 func (m *MappingEngine) selectBestValue(values map[string]interface{}) interface{} {
 	for _, value := range values {
 		if value == nil {
@@ -360,7 +394,7 @@ func (m *MappingEngine) selectBestValue(values map[string]interface{}) interface
 	return nil
 }
 
-// selectStringBestValue chooses the best value from available sources
+// selectStringBestValue chooses the best value from available suppliers
 func (*MappingEngine) selectStringBestValue(values map[string]interface{}) interface{} {
 	longestStr := ""
 	for _, value := range values {
@@ -389,7 +423,7 @@ func (m *MappingEngine) applyActions(values map[string]interface{}, actions []st
 		case "normalize_room_amenities":
 			result = m.normalizeRoomAmenities(values)
 		case "merge_image_arrays":
-			result = m.mergeObjectArrays(values, fieldMapping.FieldMapping, "link")
+			result = m.mergeObjectArrays(values, fieldMapping.ObjectArrayFieldMapping, "link") // "link" is the unique identifier for the object array
 		case "to_lowercase":
 			result = m.toLowerCase(result)
 		}
@@ -400,48 +434,11 @@ func (m *MappingEngine) applyActions(values map[string]interface{}, actions []st
 
 // normalizeAmenities normalizes amenities by mapping known variants to standard names
 func (m *MappingEngine) normalizeGeneralAmenities(values map[string]interface{}) interface{} {
-
-	// list of all known general amenities
-	// if value from source is not in list, discard value
-	// NOTE: should be a global constant or config
-	generalAmenity := map[string]string{
-		"businesscenter":  "business center",
-		"business center": "business center",
-		"gym":             "gym",
-		"outdoor pool":    "outdoor pool",
-		"indoor pool":     "indoor pool",
-		"pool":            "outdoor pool", // NOTE: assuming pool means outdoor pool
-		"airport shuttle": "airport shuttle",
-		"childcare":       "childcare",
-		"wifi":            "wifi",
-		"drycleaning":     "dry cleaning",
-		"dry cleaning":    "dry cleaning",
-		"breakfast":       "breakfast",
-		"bar":             "bar",       // NOTE: not in sample result.json but included for completeness, also assumed it's a general amenetity
-		"parking":         "parking",   // NOTE: not in sample result.json but included for completeness, also assumed it's a general amenetity
-		"concierge":       "concierge", // NOTE: not in sample result.json but included for completeness, also assumed it's a general amenetity
-	}
-
 	return m.normalizeAmenities(values, generalAmenity)
 }
 
 // normalizeRoomAmenities normalizes amenities by mapping known variants to standard names
 func (m *MappingEngine) normalizeRoomAmenities(values map[string]interface{}) interface{} {
-	// list of all known room amenities
-	// if value from source is not in list, discard value
-	// NOTE: should be a global constant or config
-	roomAmenity := map[string]string{
-		"aircon":         "aircon",
-		"tv":             "tv",
-		"coffee machine": "coffee machine",
-		"kettle":         "kettle",
-		"hair dryer":     "hair dryer",
-		"iron":           "iron",
-		"bathtub":        "bathtub",
-		"tub":            "bathtub",
-		"minibar":        "minibar", // NOTE: not in sample result.json but included for completeness, kept in room amenity as in sample_3.json
-	}
-
 	return m.normalizeAmenities(values, roomAmenity)
 }
 
@@ -475,23 +472,22 @@ func (m *MappingEngine) normalizeAmenities(values map[string]interface{}, amenit
 	return deduplicated
 }
 
-// mergeObjectArrays merges arrays of image objects from multiple sources
+// mergeObjectArrays merges arrays of objects from multiple suppliers
 func (m *MappingEngine) mergeObjectArrays(values map[string]interface{}, fieldMapping map[string][]string, uniqueIdentifier string) interface{} {
-
 	var uniqueObjects []map[string]interface{}
 	seenObject := make(map[string]bool) // track by link to avoid duplicates
 
-	// process each source
+	// process each supplier
 	for _, value := range values {
 		if value == nil {
 			continue
 		}
 
-		// handle array of image objects
+		// handle array of objects
 		if arr, ok := value.([]interface{}); ok {
 			for _, objInterface := range arr {
-				if imageObj, ok := objInterface.(map[string]interface{}); ok {
-					normalizedObject := m.normalizeObject(imageObj, fieldMapping)
+				if obj, ok := objInterface.(map[string]interface{}); ok {
+					normalizedObject := m.normalizeObject(obj, fieldMapping)
 
 					if identifier, hasIdentifier := normalizedObject[uniqueIdentifier].(string); hasIdentifier && identifier != "" {
 						if !seenObject[identifier] {
@@ -510,13 +506,12 @@ func (m *MappingEngine) mergeObjectArrays(values map[string]interface{}, fieldMa
 }
 
 // normalizeObject substitutes mapped field names in given object
-func (*MappingEngine) normalizeObject(imageObj map[string]interface{}, fieldMapping map[string][]string) map[string]interface{} {
+func (*MappingEngine) normalizeObject(obj map[string]interface{}, fieldMapping map[string][]string) map[string]interface{} {
 	result := make(map[string]interface{})
 
-	for targetField, possibleSourceFields := range fieldMapping {
-		// try to find the value using possible source field names
-		for _, sourceField := range possibleSourceFields {
-			if value, exists := imageObj[sourceField]; exists && value != nil {
+	for targetField, possibleSupplierFields := range fieldMapping {
+		for _, supplierField := range possibleSupplierFields { // try to find the value using possible supplier field names, unfortunately since it's not a mapped by supplier field name
+			if value, exists := obj[supplierField]; exists && value != nil {
 				if str, ok := value.(string); ok && strings.TrimSpace(str) != "" {
 					result[targetField] = strings.TrimSpace(str)
 					break // use first valid value found
@@ -528,15 +523,9 @@ func (*MappingEngine) normalizeObject(imageObj map[string]interface{}, fieldMapp
 	return result
 }
 
-// ===== below are 100% AI generated, not manually written =====
-
 // setNestedValue sets a value at a nested path in the result map
 func (*MappingEngine) setNestedValue(result map[string]interface{}, path string, value interface{}) {
-	if value == nil {
-		return
-	}
-
-	if path == "" {
+	if value == nil || path == "" {
 		return
 	}
 
@@ -550,8 +539,7 @@ func (*MappingEngine) setNestedValue(result map[string]interface{}, path string,
 		}
 		if next, ok := current[part].(map[string]interface{}); ok {
 			current = next
-		} else {
-			// path conflict, can't proceed
+		} else { // path conflict, can't proceed
 			return
 		}
 	}

@@ -1,117 +1,89 @@
 {
-    "id": {
-        "src::acme": "Id",
-        "src::patagonia": "id",
-        "src::paperflies": "hotel_id"
+  "id": {
+    "src::acme": "Id",
+    "src::patagonia": "id",
+    "src::paperflies": "hotel_id"
+  },
+  "destination_id": {
+    "src::acme": "DestinationId",
+    "src::patagonia": "destination",
+    "src::paperflies": "destination_id"
+  },
+  "name": {
+    "src::acme": "Name",
+    "src::patagonia": "name",
+    "src::paperflies": "hotel_name"
+  },
+  "location": {
+    "lat": {
+      "src::acme": "Latitude",
+      "src::patagonia": "lat"
     },
-    "destination_id": {
-        "src::acme": "DestinationId",
-        "src::patagonia": "destination",
-        "src::paperflies": "destination_id"
+    "lng": {
+      "src::acme": "Longitude",
+      "src::patagonia": "lng"
     },
-    "name": {
-        "src::acme": "Name",
-        "src::patagonia": "name",
-        "src::paperflies": "hotel_name"
+    "address": {
+      "src::acme": "{{Address}}, {{PostalCode}}",
+      "src::patagonia": "address",
+      "src::paperflies": "location.address"
     },
-    "location": {
-        "lat": {
-            "src::acme": "Latitude",
-            "src::patagonia": "lat"
-        },
-        "lng": {
-            "src::acme": "Longitude",
-            "src::patagonia": "lng"
-        },
-        "address": {
-            "src::acme": "{{Address}}, {{PostalCode}}",
-            "src::patagonia": "address",
-            "src::paperflies": "location.address"
-        },
-        "city": {
-            "src::acme": "City"
-        },
-        "country": {
-            "src::acme": "Country",
-            "src::paperflies": "location.country"
-        }
+    "city": {
+      "src::acme": "City"
     },
-    "description": {
-        "src::acme": "Description",
-        "src::patagonia": "info",
-        "src::paperflies": "details"
+    "country": {
+      "src::acme": "Country",
+      "src::paperflies": "location.country"
+    }
+  },
+  "description": {
+    "src::acme": "Description",
+    "src::patagonia": "info",
+    "src::paperflies": "details"
+  },
+  "amenities": {
+    "general": {
+      "src::acme": "Facilities",
+      "src::paperflies": "amenities.general",
+      "actions": ["normalize_general_amenities"]
+    },
+    "room": {
+      "src::acme": "Facilities",
+      "src::patagonia": "amenities",
+      "src::paperflies": "amenities.room",
+      "actions": ["normalize_room_amenities"]
+    }
+  },
+  "images": {
+    "rooms": {
+      "src::patagonia": "images.rooms",
+      "src::paperflies": "images.rooms",
+      "actions": ["merge_image_arrays"],
+      "field_mapping": {
+        "link": ["url", "link"],
+        "description": ["description", "caption"]
+      }
+    },
+    "site": {
+      "src::paperflies": "images.site",
+      "actions": ["merge_image_arrays"],
+      "field_mapping": {
+        "link": ["url", "link"],
+        "description": ["description", "caption"]
+      }
     },
     "amenities": {
-        "general": {
-            "src::acme": "Facilities",
-            "src::paperflies": "amenities.general",
-            "actions": [
-                "normalize_general_amenities"
-            ]
-        },
-        "room": {
-            "src::acme": "Facilities",
-            "src::patagonia": "amenities",
-            "src::paperflies": "amenities.room",
-            "actions": [
-                "normalize_room_amenities"
-            ]
-        }
-    },
-    "images": {
-        "rooms": {
-            "src::patagonia": "images.rooms",
-            "src::paperflies": "images.rooms",
-            "actions": [
-                "merge_image_arrays"
-            ],
-            "field_mapping": {
-                "link": [
-                    "url",
-                    "link"
-                ],
-                "description": [
-                    "description",
-                    "caption"
-                ]
-            }
-        },
-        "site": {
-            "src::paperflies": "images.site",
-            "actions": [
-                "merge_image_arrays"
-            ],
-            "field_mapping": {
-                "link": [
-                    "url",
-                    "link"
-                ],
-                "description": [
-                    "description",
-                    "caption"
-                ]
-            }
-        },
-        "amenities": {
-            "src::acme": null,
-            "src::patagonia": "images.amenities",
-            "src::paperflies": null,
-            "actions": [
-                "merge_image_arrays"
-            ],
-            "field_mapping": {
-                "link": [
-                    "url",
-                    "link"
-                ],
-                "description": [
-                    "description",
-                    "caption"
-                ]
-            }
-        }
-    },
-    "booking_conditions": {
-        "src::paperflies": "booking_conditions"
+      "src::acme": null,
+      "src::patagonia": "images.amenities",
+      "src::paperflies": null,
+      "actions": ["merge_image_arrays"],
+      "field_mapping": {
+        "link": ["url", "link"],
+        "description": ["description", "caption"]
+      }
     }
+  },
+  "booking_conditions": {
+    "src::paperflies": "booking_conditions"
+  }
 }
