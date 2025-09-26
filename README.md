@@ -28,7 +28,7 @@ $ go run cmd/main.go
 
 home page retrieves all hotels merged from all the sources already normalized and deduplicated
 
-### /hotel
+### /hotels
 
 retrieves hotels filtered with supplied params
 
