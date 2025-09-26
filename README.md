@@ -32,14 +32,12 @@ home page retrieves all hotels merged from all the sources already normalized an
 
 retrieves hotels filtered with supplied params
 
-| Params         | Description                 |
-| -------------- | --------------------------- |
-| id             | filters by `id` of hotel    |
-| destination_id | filters by `destination_id` |
+| Params          | Description                 | Example                      |
+| --------------- | --------------------------- | ---------------------------- |
+| ids             | filters by `id` of hotel    | `?ids=f8c9,f8c3`             |
+| destination_ids | filters by `destination_id` | `?destination_ids=123,39383` |
 
-_NOTE_: endpoint only accepts either `id` or `destination_id` at a time. Status `400 - BadRequest` is returned if both are supplied at the same time.
-
-_ASSUMPTION_: multiple hotels can share the same `destination_id`
+_NOTE_: endpoint only accepts either `ids` or `destination_ids` at a time. Status `400 - BadRequest` is returned if both are supplied at the same time.
 
 ## Response
 
